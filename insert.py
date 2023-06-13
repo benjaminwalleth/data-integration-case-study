@@ -6,11 +6,11 @@ from phonenumbers import NumberParseException
 from sqlalchemy import create_engine, text, String
 from read_file import csv_to_dataframe, xlsx_to_dataframe
 
-HOST = "localhost"
-PORT = "3306"
-DATABASE = "manymore"
-USER = "root"
-PASSWORD = ""
+HOST = "<HOST>"
+PORT = "<PORT>"
+DATABASE = "<DATABASE>"
+USER = "<USER>"
+PASSWORD = "<PASSWORD>"
 
 
 def determine_entity_type(row: pd.Series):
@@ -85,6 +85,10 @@ def insert_in_table(connection, df: pd.DataFrame, table_name: str, data_type=Non
 
 
 def import_to_mySQL():
+    """ This function is the main script for the data integration in MySQL DB.
+
+    :return:
+    """
     # Read files
     contacts = csv_to_dataframe('./data/contacts.csv')
     relations = xlsx_to_dataframe('./data/relations.xlsx')
