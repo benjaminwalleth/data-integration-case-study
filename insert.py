@@ -124,11 +124,11 @@ def import_to_mySQL():
     # For each contract determine the entity type (PM or PF)
     contracts['entity_type'] = contracts.apply(determine_entity_type, axis=1)
 
-    # Create a DataFrame entities
+    # Create a DataFrame "entities"
     entities = pd.concat([contacts[['entity_id', 'name', 'first_name', 'birthday', 'entity_type']],
                           contracts[['entity_id', 'name', 'first_name', 'birthday', 'entity_type']]])
 
-    # Build the DataFrame relations for the DB
+    # Build a new DataFrame "relations" for the DB
     entities_mapper = {}
     relations_bd = pd.DataFrame(columns=['entity_id_source', 'entity_id_destination', 'relation_type'])
     for index, row in relations.iterrows():
@@ -141,7 +141,7 @@ def import_to_mySQL():
         entity_id_source = uuid.uuid4()
         entity_id_destination = uuid.uuid4()
 
-        # Ensure that the entity doesn't already exist
+        # Ensure that the entity doesn't already exist, we check in the mapper
         if entity_source in entities_mapper:
             entity_id_source = entities_mapper[entity_source]
         else:
@@ -152,21 +152,24 @@ def import_to_mySQL():
         else:
             entities_mapper[entity_destination] = entity_id_destination
 
+        # Transform the relation type
         relation_type_mapper = {'espoux (e) de': 'SPOUSE_OF',
                                 'parent (e) de': 'PARENT_OF',
                                 'enfant (e) de': 'CHILD_OF'}
         relation_type = relation_type_mapper.get(row['relation_type'])
 
+        # Insert the row at the end of the DataFrame
         relations_bd.loc[len(relations_bd)] = [entity_id_source, entity_id_destination, relation_type]
 
+    # Insert all entities from the "relations" DataFrame in "entities" DataFrame
     for key, row in entities_mapper.items():
         entities.loc[len(entities)] = [row, key[0], key[1], key[2], key[3]]
 
-    # --> insert this DataFrame in DB
+    # Insert the "entities" DataFrame in DB
     data_type = {'entity_id': String(36)}
     insert_in_table(engine, entities, 'entities', data_type)
 
-    # Reshape the DataFrame contacts and contracts
+    # Reshape the DataFrame "contacts" and "contracts"
     contacts.drop(columns=['name', 'first_name', 'birthday', 'entity_type'], inplace=True)
     contracts.drop(columns=['name', 'first_name', 'birthday', 'entity_type', 'value'], inplace=True)
 
@@ -176,7 +179,7 @@ def import_to_mySQL():
                  'contract_number': String(64)}
     insert_in_table(engine, contracts, 'contracts', data_type)
 
-    # Insert the DataFrame relations
+    # Insert the DataFrame "relations"
     data_type = {'entity_id_source': String(36),
                  'entity_id_destination': String(36)}
     insert_in_table(engine, relations_bd, 'relations', data_type)

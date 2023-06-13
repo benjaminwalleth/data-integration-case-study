@@ -4,11 +4,11 @@ from read_file import csv_to_dataframe, xlsx_to_dataframe
 from sqlalchemy import create_engine, text
 
 
-HOST = "localhost"
-PORT = "3306"
-DATABASE = "manymore"
-USER = "root"
-PASSWORD = ""
+HOST = "<HOST>"
+PORT = "<PORT>"
+DATABASE = "<DATABASE>"
+USER = "<USER>"
+PASSWORD = "<PASSWORD>"
 
 
 class DataBaseTestCase(unittest.TestCase):
