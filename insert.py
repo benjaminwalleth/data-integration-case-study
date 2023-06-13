@@ -3,7 +3,7 @@ import uuid
 import phonenumbers
 import pandas as pd
 from phonenumbers import NumberParseException
-from sqlalchemy import create_engine, text, String, Date, Integer
+from sqlalchemy import create_engine, text, String
 from read_file import csv_to_dataframe, xlsx_to_dataframe
 
 HOST = "localhost"
@@ -11,10 +11,6 @@ PORT = "3306"
 DATABASE = "manymore"
 USER = "root"
 PASSWORD = ""
-
-# Set up the logs
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
 def determine_entity_type(row: pd.Series):
@@ -188,4 +184,8 @@ def import_to_mySQL():
         connexion.execute(text("ALTER TABLE `contracts` ADD PRIMARY KEY (`contract_number`);"))
 
 
-import_to_mySQL()
+if __name__ == '__main__':
+    # Set up the logs
+    logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    import_to_mySQL()
