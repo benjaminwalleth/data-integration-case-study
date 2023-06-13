@@ -1,14 +1,20 @@
 import logging
 import uuid
+import phonenumbers
 import pandas as pd
+from phonenumbers import NumberParseException
 from sqlalchemy import create_engine, text, String, Date, Integer
 from read_file import csv_to_dataframe, xlsx_to_dataframe
 
-HOST = "<HOST>"
-PORT = "<PORT>"
-DATABASE = "<DATABASE>"
-USER = "<USER>"
-PASSWORD = "<PASSWORD>"
+HOST = "localhost"
+PORT = "3306"
+DATABASE = "manymore"
+USER = "root"
+PASSWORD = ""
+
+# Set up the logs
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
 def determine_entity_type(row: pd.Series):
@@ -21,6 +27,48 @@ def determine_entity_type(row: pd.Series):
         return 'PM'
     else:
         return 'PF'
+
+
+def parse_phone_number(row: pd.Series):
+    """ This function returns phone numbers in the international format.
+
+    :param row:
+    :return:
+    """
+    phone_number = str(row['phone_number'])
+    phone_number = phone_number.replace('.', '-').replace(')', '-').replace('(', '')
+
+    split_for_extension = phone_number.split('x')
+    base_phone_number = split_for_extension[0]
+
+    international_phone_number = ""
+
+    # Check US phone number
+    split = base_phone_number.split('-')
+    if len(split) == 3:
+        international_phone_number = f"+1 {base_phone_number}"
+    elif len(split) == 4 and (split[0] == "001" or split[0] == "+1"):
+        international_phone_number = f"+1 {'-'.join(split[1:4])}"
+
+    if len(phone_number) == 10 and not phone_number.startswith('0'):
+        international_phone_number = f"+1 {phone_number[:3]}-{phone_number[3:6]}-{phone_number[6:10]}"
+
+    if len(phone_number) == 9:
+        international_phone_number = f"+33 {phone_number[:1]} {phone_number[1:3]} {phone_number[3:5]}" \
+                                     f" {phone_number[5:7]} {phone_number[7:9]}"
+
+    # Extension
+    if len(split_for_extension) > 1:
+        international_phone_number += f"x{split_for_extension[1]}"
+
+    try:
+        is_possible = phonenumbers.is_possible_number(phonenumbers.parse(international_phone_number))
+        if is_possible:
+            return international_phone_number
+        else:
+            return None
+    except NumberParseException:
+        return None
 
 
 def insert_in_table(connection, df: pd.DataFrame, table_name: str, data_type=None):
@@ -50,8 +98,6 @@ def import_to_mySQL():
     url_schema = f'mysql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}'
     engine = create_engine(url_schema)
 
-    logging.info('Connected to MySQL.')
-
     # Rename columns
     contacts.columns = ['name', 'first_name', 'birthday', 'civility', 'entity_type', 'address', 'zip_code',
                         'city', 'country', 'phone_number']
@@ -67,6 +113,9 @@ def import_to_mySQL():
     contracts['date_price'] = pd.to_datetime(contracts['date_price'], format="%d/%m/%Y")
     relations['birthday_s'] = pd.to_datetime(relations['birthday_s'], format="%Y-%m-%d")
     relations['birthday_d'] = pd.to_datetime(relations['birthday_d'], format="%Y-%m-%d")
+
+    # Transform phone number
+    contacts['phone_number'] = contacts.apply(parse_phone_number, axis=1)
 
     # Give a unique id for each contact and client
     contacts['entity_id'] = contacts.apply(lambda x: uuid.uuid4(), axis=1)
